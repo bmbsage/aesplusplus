@@ -1,0 +1,61 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Build (Debug)",
+            "command": "C:\\mingw64\\bin\\g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "-O0",
+                "${file}",
+                "-o",
+                "${workspaceFolder}\\${fileBasenameNoExtension}.exe",
+                "-std=c++17",
+                "-maes",
+                "-msse4.1",
+                "-I${workspaceFolder}*.h"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Debug build (unoptimized, with debug symbols)"
+        },
+        {
+            "type": "cppbuild",
+            "label": "Build (Release)",
+            "command": "C:\\mingw64\\bin\\g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-O3",
+                "-DNDEBUG",
+                "${file}",
+                "-o",
+                "${workspaceFolder}\\${fileBasenameNoExtension}.exe",
+                "-std=c++17",
+                "-maes",
+                "-msse4.1",
+                "-I${workspaceFolder}*.h"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Release build (optimized)"
+        }
+    ],
+    "version": "2.0.0"
+}
