@@ -12,6 +12,12 @@
 #include <string.h>
 #include <stdbool.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+#define AESNI_TARGET __attribute__((target("aes,sse2,sse4.1")))
+#else
+#define AESNI_TARGET
+#endif
+
 // Query for AES-NI at runtime
 static bool aes_ni_supported(void);
 
@@ -210,7 +216,7 @@ const uint32_t rcon[11] = {0x00000000, 0x01000000, 0x02000000, 0x04000000, 0x080
     }
 }
 // AES-NI helpers (AES-128 only)
-static inline __m128i aes128_key_expansion_step(__m128i temp1, __m128i temp2) {
+static inline AESNI_TARGET __m128i aes128_key_expansion_step(__m128i temp1, __m128i temp2) {
     temp2 = _mm_shuffle_epi32(temp2, _MM_SHUFFLE(3,3,3,3));
     temp1 = _mm_xor_si128(temp1, _mm_slli_si128(temp1, 4));
     temp1 = _mm_xor_si128(temp1, _mm_slli_si128(temp1, 4));
@@ -219,7 +225,7 @@ static inline __m128i aes128_key_expansion_step(__m128i temp1, __m128i temp2) {
     return temp1;
 }
 
-void AESEncryption::setupAESNIKeys128() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys128() {
     // Only for 128-bit key
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(11);
@@ -257,7 +263,7 @@ void AESEncryption::setupAESNIKeys128() {
     }
 }
 
-void AESEncryption::setupAESNIKeys192() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys192() {
     // AES-192: 12 rounds (13 round keys stored in expandedKey)
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(13);
@@ -276,7 +282,7 @@ void AESEncryption::setupAESNIKeys192() {
     }
 }
 
-void AESEncryption::setupAESNIKeys256() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys256() {
     // AES-256: 14 rounds (15 round keys stored in expandedKey)
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(15);
@@ -290,12 +296,12 @@ void AESEncryption::setupAESNIKeys256() {
     // Prepare decryption round keys (InvMixColumns + reorder)
     aesni_dec_rounds[0] = aesni_enc_rounds[14];
     aesni_dec_rounds[14] = aesni_enc_rounds[0];
-    for (int i = 1; i < 14; ++i) {
+    for (int i = 1; i < 14; ++i) {  
         aesni_dec_rounds[i] = _mm_aesimc_si128(aesni_enc_rounds[14 - i]);
     }
 }
 
-void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* out) const {
+AESNI_TARGET void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* out) const {
     __m128i m = _mm_loadu_si128((const __m128i*)in);
     m = _mm_xor_si128(m, aesni_enc_rounds[0]);
     for (int r = 1; r < rounds; ++r) m = _mm_aesenc_si128(m, aesni_enc_rounds[r]);
@@ -303,7 +309,7 @@ void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* out) const {
     _mm_storeu_si128((__m128i*)out, m);
 }
 
-void AESEncryption::aesniDecryptBlock(const uint8_t* in, uint8_t* out) const {
+AESNI_TARGET void AESEncryption::aesniDecryptBlock(const uint8_t* in, uint8_t* out) const {
     __m128i m = _mm_loadu_si128((const __m128i*)in);
     m = _mm_xor_si128(m, aesni_dec_rounds[0]);
     for (int r = 1; r < rounds; ++r) m = _mm_aesdec_si128(m, aesni_dec_rounds[r]);
