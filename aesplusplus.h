@@ -68,7 +68,8 @@ enum AESMode { ECB, CBC, CTR, GCM };
 
 // Wrapper type avoids GCC warnings when storing SIMD values in STL containers.
 // 1. Define the wrapper with explicit 16-byte alignment
-struct alignas(16) AESBlock128 {
+struct alignas(16) AESBlock128
+{
     __m128i data;
 
     AESBlock128() : data(_mm_setzero_si128()) {}
@@ -79,7 +80,8 @@ struct alignas(16) AESBlock128 {
     operator __m128i() const { return data; }
 };
 
-class AESEncryption {
+class AESEncryption 
+{
 public:
     // Constructor with 128, 192, or 256-bit key
     explicit AESEncryption(const std::vector<uint8_t>& key);
@@ -96,9 +98,9 @@ public:
     
     // Convenience functions for strings
     std::string encryptString(const std::string& plaintext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
-                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16);
+                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16,bool padding = false);
     std::string decryptString(const std::string& ciphertext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
-                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16);
+                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16, bool padding = false);
 
     // Encrypt/decrypt in CBC mode (plaintext/ciphertext length must be multiple of 16)
     std::vector<uint8_t> encryptCBC(const std::vector<uint8_t>& plaintext, const std::vector<uint8_t>& iv);
@@ -151,7 +153,8 @@ private:
 
 
 
-AESEncryption::AESEncryption(const std::vector<uint8_t>& key) : key(key) {
+AESEncryption::AESEncryption(const std::vector<uint8_t>& key) : key(key)
+{
     if (key.size() == 16) {
         rounds = 10; // AES-128
     } else if (key.size() == 24) {
@@ -215,8 +218,10 @@ const uint32_t rcon[11] = {0x00000000, 0x01000000, 0x02000000, 0x04000000, 0x080
         expandedKey[4*i + 3] = w[i] & 0xff;
     }
 }
+
 // AES-NI helpers (AES-128 only)
-static inline AESNI_TARGET __m128i aes128_key_expansion_step(__m128i temp1, __m128i temp2) {
+static inline AESNI_TARGET __m128i aes128_key_expansion_step(__m128i temp1, __m128i temp2) 
+{
     temp2 = _mm_shuffle_epi32(temp2, _MM_SHUFFLE(3,3,3,3));
     temp1 = _mm_xor_si128(temp1, _mm_slli_si128(temp1, 4));
     temp1 = _mm_xor_si128(temp1, _mm_slli_si128(temp1, 4));
@@ -225,7 +230,8 @@ static inline AESNI_TARGET __m128i aes128_key_expansion_step(__m128i temp1, __m1
     return temp1;
 }
 
-AESNI_TARGET void AESEncryption::setupAESNIKeys128() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys128() 
+{
     // Only for 128-bit key
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(11);
@@ -263,7 +269,8 @@ AESNI_TARGET void AESEncryption::setupAESNIKeys128() {
     }
 }
 
-AESNI_TARGET void AESEncryption::setupAESNIKeys192() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys192()
+{
     // AES-192: 12 rounds (13 round keys stored in expandedKey)
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(13);
@@ -282,7 +289,8 @@ AESNI_TARGET void AESEncryption::setupAESNIKeys192() {
     }
 }
 
-AESNI_TARGET void AESEncryption::setupAESNIKeys256() {
+AESNI_TARGET void AESEncryption::setupAESNIKeys256()
+{
     // AES-256: 14 rounds (15 round keys stored in expandedKey)
     aesni_enc_rounds.clear(); aesni_dec_rounds.clear();
     aesni_enc_rounds.resize(15);
@@ -301,7 +309,8 @@ AESNI_TARGET void AESEncryption::setupAESNIKeys256() {
     }
 }
 
-AESNI_TARGET void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* out) const {
+AESNI_TARGET void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* out) const 
+{
     __m128i m = _mm_loadu_si128((const __m128i*)in);
     m = _mm_xor_si128(m, aesni_enc_rounds[0]);
     for (int r = 1; r < rounds; ++r) m = _mm_aesenc_si128(m, aesni_enc_rounds[r]);
@@ -309,7 +318,8 @@ AESNI_TARGET void AESEncryption::aesniEncryptBlock(const uint8_t* in, uint8_t* o
     _mm_storeu_si128((__m128i*)out, m);
 }
 
-AESNI_TARGET void AESEncryption::aesniDecryptBlock(const uint8_t* in, uint8_t* out) const {
+AESNI_TARGET void AESEncryption::aesniDecryptBlock(const uint8_t* in, uint8_t* out) const
+{
     __m128i m = _mm_loadu_si128((const __m128i*)in);
     m = _mm_xor_si128(m, aesni_dec_rounds[0]);
     for (int r = 1; r < rounds; ++r) m = _mm_aesdec_si128(m, aesni_dec_rounds[r]);
@@ -317,7 +327,8 @@ AESNI_TARGET void AESEncryption::aesniDecryptBlock(const uint8_t* in, uint8_t* o
     _mm_storeu_si128((__m128i*)out, m);
 }
 
-void AESEncryption::subBytes(std::vector<uint8_t>& state) {
+void AESEncryption::subBytes(std::vector<uint8_t>& state) 
+{
     // Implement SubBytes transformation using the AES S-box
     // This is a placeholder and should be implemented according to the AES specification
     for (size_t i = 0; i < state.size(); i++) {
@@ -325,7 +336,8 @@ void AESEncryption::subBytes(std::vector<uint8_t>& state) {
     }
 }
 
-void AESEncryption::shiftRows(std::vector<uint8_t>& state) {
+void AESEncryption::shiftRows(std::vector<uint8_t>& state) 
+{
     // Implement ShiftRows transformation
     // This is a placeholder and should be implemented according to the AES specification
     std::vector<uint8_t> temp(state.size());
@@ -354,7 +366,8 @@ void AESEncryption::shiftRows(std::vector<uint8_t>& state) {
     }
 }
 
-void AESEncryption::mixColumns(std::vector<uint8_t>& state) {
+void AESEncryption::mixColumns(std::vector<uint8_t>& state)
+{
     auto xtime = [](uint8_t x) -> uint8_t { return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1b : 0x00)); };
     for (int c = 0; c < 4; ++c) {
         int i = c * 4;
@@ -371,12 +384,14 @@ void AESEncryption::mixColumns(std::vector<uint8_t>& state) {
     }
 }
 
-void AESEncryption::addRoundKey(std::vector<uint8_t>& state, int round) {
+void AESEncryption::addRoundKey(std::vector<uint8_t>& state, int round) 
+{
     int base = round * 16;
     for (int i = 0; i < 16; ++i) state[i] ^= expandedKey[base + i];
 }
 
-std::vector<uint8_t> AESEncryption::encryptECB(const std::vector<uint8_t>& plaintext) {
+std::vector<uint8_t> AESEncryption::encryptECB(const std::vector<uint8_t>& plaintext)
+{
     if (plaintext.size() % 16 != 0) {
         throw std::invalid_argument("Plaintext must be a multiple of 16 bytes");
     }
@@ -406,7 +421,8 @@ std::vector<uint8_t> AESEncryption::encryptECB(const std::vector<uint8_t>& plain
     return ciphertext;
 }
 
-std::vector<uint8_t> AESEncryption::decryptECB(const std::vector<uint8_t>& ciphertext) {
+std::vector<uint8_t> AESEncryption::decryptECB(const std::vector<uint8_t>& ciphertext) 
+{
     if (ciphertext.size() % 16 != 0) {
         throw std::invalid_argument("Ciphertext must be a multiple of 16 bytes");
     }
@@ -462,7 +478,8 @@ std::vector<uint8_t> AESEncryption::decryptECB(const std::vector<uint8_t>& ciphe
     return plaintext;
 }
 
-std::vector<uint8_t> AESEncryption::encryptCBC(const std::vector<uint8_t>& plaintext, const std::vector<uint8_t>& iv) {
+std::vector<uint8_t> AESEncryption::encryptCBC(const std::vector<uint8_t>& plaintext, const std::vector<uint8_t>& iv)
+{
     if (iv.size() != 16) throw std::invalid_argument("IV must be 16 bytes");
     if (plaintext.size() % 16 != 0) throw std::invalid_argument("Plaintext must be a multiple of 16 bytes");
     std::vector<uint8_t> ciphertext(plaintext.size());
@@ -487,7 +504,8 @@ std::vector<uint8_t> AESEncryption::encryptCBC(const std::vector<uint8_t>& plain
     return ciphertext;
 }
 
-std::vector<uint8_t> AESEncryption::decryptCBC(const std::vector<uint8_t>& ciphertext, const std::vector<uint8_t>& iv) {
+std::vector<uint8_t> AESEncryption::decryptCBC(const std::vector<uint8_t>& ciphertext, const std::vector<uint8_t>& iv) 
+{
     if (iv.size() != 16) throw std::invalid_argument("IV must be 16 bytes");
     if (ciphertext.size() % 16 != 0) throw std::invalid_argument("Ciphertext must be a multiple of 16 bytes");
     std::vector<uint8_t> plaintext(ciphertext.size());
@@ -522,7 +540,8 @@ static void increment_counter(std::vector<uint8_t>& counter) {
     }
 }
 
-std::vector<uint8_t> AESEncryption::encryptCTR(const std::vector<uint8_t>& data, const std::vector<uint8_t>& iv) {
+std::vector<uint8_t> AESEncryption::encryptCTR(const std::vector<uint8_t>& data, const std::vector<uint8_t>& iv) 
+{
     if (iv.size() != 16) throw std::invalid_argument("IV must be 16 bytes");
     std::vector<uint8_t> out(data.size());
     uint8_t counter[16];
@@ -552,28 +571,33 @@ std::vector<uint8_t> AESEncryption::encryptCTR(const std::vector<uint8_t>& data,
     return out;
 }
 
-std::vector<uint8_t> AESEncryption::decryptCTR(const std::vector<uint8_t>& data, const std::vector<uint8_t>& iv) {
+std::vector<uint8_t> AESEncryption::decryptCTR(const std::vector<uint8_t>& data, const std::vector<uint8_t>& iv) 
+{
     // CTR encryption and decryption are identical
     return encryptCTR(data, iv);
 }
 
 
-static inline void xor_block(std::array<uint8_t,16>& dst, const std::array<uint8_t,16>& a) {
+static inline void xor_block(std::array<uint8_t,16>& dst, const std::array<uint8_t,16>& a)  
+{
     for (int i=0;i<16;++i) dst[i] ^= a[i];
 }
 
-static inline std::array<uint8_t,16> vec16_from_ptr(const uint8_t *p) {
+static inline std::array<uint8_t,16> vec16_from_ptr(const uint8_t *p)
+{
     std::array<uint8_t,16> r;
     for (int i=0;i<16;++i) r[i] = p[i];
     return r;
 }
 
-static inline void to_u64be(const std::array<uint8_t,16>& b, uint64_t &hi, uint64_t &lo) {
+static inline void to_u64be(const std::array<uint8_t,16>& b, uint64_t &hi, uint64_t &lo) 
+{
     hi = 0; lo = 0;
     for (int i = 0; i < 8; ++i) hi = (hi << 8) | b[i];
     for (int i = 8; i < 16; ++i) lo = (lo << 8) | b[i];
 }
-static inline std::array<uint8_t,16> from_u64be(uint64_t hi, uint64_t lo) {
+static inline std::array<uint8_t,16> from_u64be(uint64_t hi, uint64_t lo) 
+{
     std::array<uint8_t,16> r;
     for (int i = 7; i >= 0; --i) { r[i] = hi & 0xff; hi >>= 8; }
     for (int i = 15; i >= 8; --i) { r[i] = lo & 0xff; lo >>= 8; }
@@ -581,7 +605,8 @@ static inline std::array<uint8_t,16> from_u64be(uint64_t hi, uint64_t lo) {
 }
 
 // Carry-less multiply in GF(2^128) per GCM (right-to-left method)
-static inline std::array<uint8_t,16> ghash_mul(const std::array<uint8_t,16>& X, const std::array<uint8_t,16>& Y) {
+static inline std::array<uint8_t,16> ghash_mul(const std::array<uint8_t,16>& X, const std::array<uint8_t,16>& Y)
+{
     uint64_t xh, xl, yh, yl;
     to_u64be(X, xh, xl);
     to_u64be(Y, yh, yl);
@@ -611,7 +636,8 @@ static inline std::array<uint8_t,16> ghash_mul(const std::array<uint8_t,16>& X, 
 
 static inline std::array<uint8_t,16> ghash(const std::array<uint8_t,16>& H,
                                            const std::vector<uint8_t>& aad,
-                                           const std::vector<uint8_t>& cipher) {
+                                           const std::vector<uint8_t>& cipher)
+{
     std::array<uint8_t,16> Y{};
     // process aad blocks
     size_t off = 0;
@@ -654,7 +680,8 @@ static inline std::array<uint8_t,16> ghash(const std::array<uint8_t,16>& H,
     return Y;
 }
 
-static inline bool ct_equal(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) {
+static inline bool ct_equal(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) 
+{
     if (a.size() != b.size()) return false;
     uint8_t x = 0;
     for (size_t i=0;i<a.size();++i) x |= a[i] ^ b[i];
@@ -664,7 +691,8 @@ static inline bool ct_equal(const std::vector<uint8_t>& a, const std::vector<uin
 std::vector<uint8_t> AESEncryption::encryptGCM(const std::vector<uint8_t>& plaintext,
                                                const std::vector<uint8_t>& iv,
                                                const std::vector<uint8_t>& aad,
-                                               size_t tagLen) {
+                                               size_t tagLen) 
+{
     if (tagLen == 0 || tagLen > 16) throw std::invalid_argument("tagLen must be 1..16");
     // H = E(K, 0^128)
     uint8_t zero16[16] = {0};
@@ -724,7 +752,8 @@ std::vector<uint8_t> AESEncryption::encryptGCM(const std::vector<uint8_t>& plain
 std::vector<uint8_t> AESEncryption::decryptGCM(const std::vector<uint8_t>& ciphertext_and_tag,
                                                const std::vector<uint8_t>& iv,
                                                const std::vector<uint8_t>& aad,
-                                               size_t tagLen) {
+                                               size_t tagLen) 
+{
     if (tagLen == 0 || tagLen > 16) throw std::invalid_argument("tagLen must be 1..16");
     if (ciphertext_and_tag.size() < tagLen) throw std::invalid_argument("Input too short");
 
@@ -785,11 +814,13 @@ std::vector<uint8_t> AESEncryption::decryptGCM(const std::vector<uint8_t>& ciphe
 }
 
 
-void AESEncryption::invSubBytes(std::vector<uint8_t>& state) {
+void AESEncryption::invSubBytes(std::vector<uint8_t>& state)
+{
     for (size_t i = 0; i < state.size(); ++i) state[i] = inv_sbox[state[i]];
 }
 
-void AESEncryption::invShiftRows(std::vector<uint8_t>& state) {
+void AESEncryption::invShiftRows(std::vector<uint8_t>& state)
+{
     std::vector<uint8_t> tmp(16);
     tmp[0] = state[0]; tmp[1] = state[13]; tmp[2] = state[10]; tmp[3] = state[7];
     tmp[4] = state[4]; tmp[5] = state[1]; tmp[6] = state[14]; tmp[7] = state[11];
@@ -798,7 +829,8 @@ void AESEncryption::invShiftRows(std::vector<uint8_t>& state) {
     for (int i = 0; i < 16; ++i) state[i] = tmp[i];
 }
 
-void AESEncryption::invMixColumns(std::vector<uint8_t>& state) {
+void AESEncryption::invMixColumns(std::vector<uint8_t>& state)
+{
     auto gf_mul = [](uint8_t a, uint8_t b) -> uint8_t {
         uint8_t res = 0;
         uint8_t t = a;
@@ -825,21 +857,27 @@ void AESEncryption::invMixColumns(std::vector<uint8_t>& state) {
 }
 
 std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mode, const std::vector<uint8_t>* iv,
-                                         const std::vector<uint8_t>* aad, size_t tagLen) {
+                                         const std::vector<uint8_t>* aad, size_t tagLen,bool padding)
+{
     
-    if (mode == AESMode::CBC || mode == AESMode::CTR) {
-        if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
-        if (iv->size() != 16) throw std::invalid_argument("IV must be 16 bytes");
-    }
-    std::vector<uint8_t> plainBytes(plaintext.begin(), plaintext.end());  
-    std::vector<uint8_t> cipherBytes;
+        if (mode == AESMode::CBC || mode == AESMode::CTR) 
+        {
+            if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
+            if (iv->size() != 16 && mode != AESMode::GCM) throw std::invalid_argument("IV must be 16 bytes");
+        }
+
+        std::vector<uint8_t> plainBytes(plaintext.begin(), plaintext.end());  
+        std::vector<uint8_t> cipherBytes;
+        if(padding || (mode == AESMode::ECB || mode == AESMode::CBC)) 
+        {
+        plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
+        }
+
     switch(mode) {
         case AESMode::ECB:
-            plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             cipherBytes = encryptECB(plainBytes);
             break;
         case AESMode::CBC:
-            plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             cipherBytes = encryptCBC(plainBytes, *iv);
             break;
         case AESMode::CTR:
@@ -853,22 +891,24 @@ std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mo
 }   
 
 std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode mode, const std::vector<uint8_t>* iv,
-                                         const std::vector<uint8_t>* aad, size_t tagLen) {
+                                         const std::vector<uint8_t>* aad, size_t tagLen,bool padding) 
+{
 
-        if (mode == AESMode::CBC || mode == AESMode::CTR) {
-        if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
-        if (iv->size() != 16) throw std::invalid_argument("IV must be 16 bytes");
-    }
-    std::vector<uint8_t> cipherBytes(ciphertext.begin(), ciphertext.end());
-    std::vector<uint8_t> plainBytes;
+        if (mode == AESMode::CBC || mode == AESMode::CTR) 
+        {
+            if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
+            if (iv->size() != 16 && mode != AESMode::GCM) throw std::invalid_argument("IV must be 16 bytes");
+        }
+
+        std::vector<uint8_t> cipherBytes(ciphertext.begin(), ciphertext.end());
+        std::vector<uint8_t> plainBytes;
+
     switch(mode) {
         case AESMode::ECB:
             plainBytes = decryptECB(cipherBytes);
-            plainBytes = unpad(plainBytes); // unpad 16 bytes if necessary
             break;
         case AESMode::CBC:
             plainBytes = decryptCBC(cipherBytes, *iv);
-              plainBytes = unpad(plainBytes); // unpad 16 bytes if necessary
             break;
         case AESMode::CTR:
             plainBytes = decryptCTR(cipherBytes, *iv);
@@ -877,17 +917,24 @@ std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode m
              plainBytes = decryptGCM(cipherBytes, *iv, aad ? *aad : std::vector<uint8_t>{}, tagLen);
              break;
     }
-    return std::string(plainBytes.begin(), plainBytes.end());
+
+        if(padding || (mode == AESMode::ECB || mode == AESMode::CBC)) 
+        {
+        plainBytes = unpad(plainBytes);  // Unpad to original length if necessary
+        }
+        return std::string(plainBytes.begin(), plainBytes.end());
 }   
 
-std::vector<uint8_t> AESEncryption::pad(const std::vector<uint8_t>& data) {
+std::vector<uint8_t> AESEncryption::pad(const std::vector<uint8_t>& data) 
+{
     size_t pad_len = 16 - (data.size() % 16);
     std::vector<uint8_t> padded(data);
     padded.insert(padded.end(), pad_len, static_cast<uint8_t>(pad_len));
     return padded;
 }
 
-std::vector<uint8_t> AESEncryption::unpad(const std::vector<uint8_t>& data) {
+std::vector<uint8_t> AESEncryption::unpad(const std::vector<uint8_t>& data)
+{
     if (data.empty()) throw std::invalid_argument("Cannot unpad empty data");
     uint8_t pad_len = data.back();
     if (pad_len == 0 || pad_len > 16) throw std::invalid_argument("Invalid padding");
@@ -902,7 +949,8 @@ std::vector<uint8_t> AESEncryption::unpad(const std::vector<uint8_t>& data) {
 }
 
 
-static bool aes_ni_supported(void) {
+static bool aes_ni_supported(void) 
+{
     unsigned int eax, ebx, ecx, edx;
     if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx))
         return false;
