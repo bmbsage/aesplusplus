@@ -60,6 +60,19 @@ static const uint8_t inv_sbox[256] = {
 
 enum AESMode { ECB, CBC, CTR, GCM };
 
+// Wrapper type avoids GCC warnings when storing SIMD values in STL containers.
+// 1. Define the wrapper with explicit 16-byte alignment
+struct alignas(16) AESBlock128 {
+    __m128i data;
+
+    AESBlock128() : data(_mm_setzero_si128()) {}
+    // 2. Add a constructor for easy conversion
+    AESBlock128(__m128i v) : data(v) {}
+    
+    // 3. (Optional) Conversion operator to use it directly in intrinsics
+    operator __m128i() const { return data; }
+};
+
 class AESEncryption {
 public:
     // Constructor with 128, 192, or 256-bit key
@@ -106,8 +119,8 @@ private:
     std::vector<uint8_t> expandedKey;
     // AES-NI accelerated round keys (only used when available and for AES-128)
     bool use_aesni = false;
-    std::vector<__m128i> aesni_enc_rounds;
-    std::vector<__m128i> aesni_dec_rounds;
+    std::vector<AESBlock128> aesni_enc_rounds;
+    std::vector<AESBlock128> aesni_dec_rounds;
     // per-round 4-byte words for key schedule (no longer used)
 
     void keyExpansion();
@@ -809,14 +822,15 @@ std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mo
         if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
         if (iv->size() != 16) throw std::invalid_argument("IV must be 16 bytes");
     }
-    std::vector<uint8_t> plainBytes(plaintext.begin(), plaintext.end());
-    plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
+    std::vector<uint8_t> plainBytes(plaintext.begin(), plaintext.end());  
     std::vector<uint8_t> cipherBytes;
     switch(mode) {
         case AESMode::ECB:
+            plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             cipherBytes = encryptECB(plainBytes);
             break;
         case AESMode::CBC:
+            plainBytes = pad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             cipherBytes = encryptCBC(plainBytes, *iv);
             break;
         case AESMode::CTR:
@@ -839,9 +853,11 @@ std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode m
     switch(mode) {
         case AESMode::ECB:
             plainBytes = decryptECB(cipherBytes);
+            plainBytes = unpad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             break;
         case AESMode::CBC:
             plainBytes = decryptCBC(cipherBytes, *iv);
+              plainBytes = unpad(plainBytes);  // Pad to multiple of 16 bytes if necessary
             break;
         case AESMode::CTR:
             plainBytes = decryptCTR(cipherBytes, *iv);
@@ -849,7 +865,6 @@ std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode m
         case AESMode::GCM:
             throw std::invalid_argument("decryptString does not support GCM mode");
     }
-    plainBytes = unpad(plainBytes);  // Pad to multiple of 16 bytes if necessary
     return std::string(plainBytes.begin(), plainBytes.end());
 }   
 
