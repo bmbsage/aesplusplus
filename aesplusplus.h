@@ -89,8 +89,10 @@ public:
     std::vector<uint8_t> decryptECB(const std::vector<uint8_t>& ciphertext);
     
     // Convenience functions for strings
-    std::string encryptString(const std::string& plaintext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr);
-    std::string decryptString(const std::string& ciphertext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr);
+    std::string encryptString(const std::string& plaintext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
+                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16);
+    std::string decryptString(const std::string& ciphertext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
+                              const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16);
 
     // Encrypt/decrypt in CBC mode (plaintext/ciphertext length must be multiple of 16)
     std::vector<uint8_t> encryptCBC(const std::vector<uint8_t>& plaintext, const std::vector<uint8_t>& iv);
@@ -816,7 +818,8 @@ void AESEncryption::invMixColumns(std::vector<uint8_t>& state) {
     }
 }
 
-std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mode, const std::vector<uint8_t>* iv) {
+std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mode, const std::vector<uint8_t>* iv,
+                                         const std::vector<uint8_t>* aad, size_t tagLen) {
     
     if (mode == AESMode::CBC || mode == AESMode::CTR) {
         if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
@@ -837,12 +840,14 @@ std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mo
             cipherBytes = encryptCTR(plainBytes, *iv);
             break;
         case AESMode::GCM:
-            throw std::invalid_argument("encryptString does not support GCM mode");
+            encryptGCM(plainBytes, *iv, aad ? *aad : std::vector<uint8_t>{}, tagLen);
+        break;
     }
     return std::string(cipherBytes.begin(), cipherBytes.end());
 }   
 
-std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode mode, const std::vector<uint8_t>* iv) {
+std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode mode, const std::vector<uint8_t>* iv,
+                                         const std::vector<uint8_t>* aad, size_t tagLen) {
 
         if (mode == AESMode::CBC || mode == AESMode::CTR) {
         if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
@@ -853,17 +858,18 @@ std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode m
     switch(mode) {
         case AESMode::ECB:
             plainBytes = decryptECB(cipherBytes);
-            plainBytes = unpad(plainBytes);  // Pad to multiple of 16 bytes if necessary
+            plainBytes = unpad(plainBytes); // unpad 16 bytes if necessary
             break;
         case AESMode::CBC:
             plainBytes = decryptCBC(cipherBytes, *iv);
-              plainBytes = unpad(plainBytes);  // Pad to multiple of 16 bytes if necessary
+              plainBytes = unpad(plainBytes); // unpad 16 bytes if necessary
             break;
         case AESMode::CTR:
             plainBytes = decryptCTR(cipherBytes, *iv);
             break;
         case AESMode::GCM:
-            throw std::invalid_argument("decryptString does not support GCM mode");
+             plainBytes = decryptGCM(cipherBytes, *iv, aad ? *aad : std::vector<uint8_t>{}, tagLen);
+             break;
     }
     return std::string(plainBytes.begin(), plainBytes.end());
 }   
