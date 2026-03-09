@@ -860,9 +860,9 @@ std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mo
                                          const std::vector<uint8_t>* aad, size_t tagLen,bool padding)
 {
     
-        if (mode == AESMode::CBC || mode == AESMode::CTR) 
+        if (mode == AESMode::CBC || mode == AESMode::CTR || mode == AESMode::GCM) 
         {
-            if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
+            if (!iv) throw std::invalid_argument("IV is required for CBC, CTR, and GCM modes");
             if (iv->size() != 16 && mode != AESMode::GCM) throw std::invalid_argument("IV must be 16 bytes");
         }
 
@@ -894,9 +894,9 @@ std::string AESEncryption::decryptString(const std::string& ciphertext,AESMode m
                                          const std::vector<uint8_t>* aad, size_t tagLen,bool padding) 
 {
 
-        if (mode == AESMode::CBC || mode == AESMode::CTR) 
+        if (mode == AESMode::CBC || mode == AESMode::CTR || mode == AESMode::GCM) 
         {
-            if (!iv) throw std::invalid_argument("IV is required for CBC and CTR modes");
+            if (!iv) throw std::invalid_argument("IV is required for CBC, CTR, and GCM modes");
             if (iv->size() != 16 && mode != AESMode::GCM) throw std::invalid_argument("IV must be 16 bytes");
         }
 
