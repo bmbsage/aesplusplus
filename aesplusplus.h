@@ -97,8 +97,21 @@ public:
     std::vector<uint8_t> decryptECB(const std::vector<uint8_t>& ciphertext);
     
     // Convenience functions for strings
+
+/*
+The following functions support encryption/decryption of strings in various modes.
+For CBC, CTR, and GCM modes, an IV is required (must be 16 bytes for CBC/CTR; GCM can use variable length).
+For GCM mode, an AAD can also be provided for authentication (optional).
+The encryptString function returns a hex-encoded string of the ciphertext (and tag for GCM).
+The decryptString function takes a hex-encoded ciphertext string and returns the plaintext string.*/    
     std::string encryptString(const std::string& plaintext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
                               const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16,bool padding = false);
+/*
+The following functions support encryption/decryption of strings in various modes.
+For CBC, CTR, and GCM modes, an IV is required (must be 16 bytes for CBC/CTR; GCM can use variable length).
+For GCM mode, an AAD can also be provided for authentication (optional).
+The encryptString function returns a hex-encoded string of the ciphertext (and tag for GCM).
+The decryptString function takes a hex-encoded ciphertext string and returns the plaintext string.*/
     std::string decryptString(const std::string& ciphertext,AESMode mode = AESMode::ECB, const std::vector<uint8_t>* iv = nullptr,
                               const std::vector<uint8_t>* aad = nullptr, size_t tagLen = 16, bool padding = false);
 
