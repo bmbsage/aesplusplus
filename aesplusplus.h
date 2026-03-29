@@ -897,7 +897,7 @@ std::string AESEncryption::encryptString(const std::string& plaintext,AESMode mo
             cipherBytes = encryptCTR(plainBytes, *iv);
             break;
         case AESMode::GCM:
-            encryptGCM(plainBytes, *iv, aad ? *aad : std::vector<uint8_t>{}, tagLen);
+            cipherBytes = encryptGCM(plainBytes, *iv, aad ? *aad : std::vector<uint8_t>{}, tagLen);
         break;
     }
     return std::string(cipherBytes.begin(), cipherBytes.end());
