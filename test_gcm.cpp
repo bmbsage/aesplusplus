@@ -134,6 +134,40 @@ int main() {
         return 4;
     }
 
+    // Test cryption string ecryption/decryptionstring function
+    std::cout << "\n=== Authentication Failure Test (AES-128) ===" << std::endl;
+    try {
+        AESEncryption aes128(key128);
+        auto encStr = aes128.encryptString("Hello, world!",AESMode::GCM, &iv, &aad, tagLen);
+        std::cout << "Encrypted string: " << encStr << std::endl;
+        auto decStr = aes128.decryptString(encStr, AESMode::GCM, &iv, &aad, tagLen);
+        std::cout << "Decrypted string: " << decStr << std::endl;
+        if (decStr == "Hello, world!") {
+            std::cout << "PASS" << std::endl;
+        } else {
+            std::cout << "FAIL - Decrypted string doesn't match original" << std::endl;
+            return 5;
+        }
+        
+        // Corrupt the tag by modifying last byte
+        encStr[encStr.size() - 1] ^= 0xFF;
+        
+        try {
+            auto decrypted = aes128.decryptString(encStr, AESMode::GCM, &iv, &aad, tagLen);
+            std::cout << "FAIL - Authentication should have failed but didn't" << std::endl;
+            return 4;
+        } catch (const std::runtime_error& e) {
+            std::cout << "Authentication check caught tampered tag: " << e.what() << std::endl;
+            std::cout << "PASS" << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return 4;
+    }
+
+        
+
+
     std::cout << "\nAll GCM tests passed!" << std::endl;
     return 0;
 }
